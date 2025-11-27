@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat App Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            width: 90%;
+            max-width: 800px;
+            height: 600px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            background: #1877f2;
+            color: white;
+            padding: 20px;
+            border-radius: 12px 12px 0 0;
+            text-align: center;
+        }
+        
+        .auth-section, .chat-section {
+            padding: 20px;
+            flex: 1;
+        }
+        
+        .auth-section {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 15px;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        input, button {
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        
+        button {
+            background: #1877f2;
+            color: white;
+            cursor: pointer;
+            border: none;
+        }
+        
+        button:hover {
+            background: #166fe5;
+        }
+        
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .chat-section {
+            display: none;
+            flex-direction: column;
+        }
+        
+        .rooms-section {
+            border-bottom: 1px solid #eee;
+            padding-bottom: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .messages-container {
+            flex: 1;
+            border: 1px solid #eee;
+            border-radius: 6px;
+            padding: 15px;
+            overflow-y: auto;
+            margin-bottom: 15px;
+            max-height: 300px;
+        }
+        
+        .message {
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            background: #f8f9fa;
+        }
+        
+        .message.own {
+            background: #1877f2;
+            color: white;
+            text-align: right;
+        }
+        
+        .message-input-section {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .message-input {
+            flex: 1;
+        }
+        
+        .room-item {
+            padding: 10px;
+            border: 1px solid #eee;
+            border-radius: 6px;
+            margin: 5px 0;
+            cursor: pointer;
+        }
+        
+        .room-item:hover {
+            background: #f8f9fa;
+        }
+        
+        .room-item.active {
+            background: #e3f2fd;
+        }
+        
+        .error {
+            color: red;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+        
+        .success {
+            color: green;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            cursor: pointer;
+            border-radius: 6px;
+        }
+        
+        .tab.active {
+            background: #1877f2;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Chat App Demo</h1>
+            <div id="user-info" style="display: none;">
+                <span id="user-name"></span>
+                <button id="logout-btn" style="margin-left: 10px; padding: 5px 10px; font-size: 12px;">Logout</button>
+            </div>
+        </div>
+        
+        <div class="auth-section" id="auth-section">
+            <div class="tabs">
+                <div class="tab active" onclick="showTab('login')">Login</div>
+                <div class="tab" onclick="showTab('signup')">Sign Up</div>
+            </div>
+            
+            <form id="login-form">
+                <div class="form-group">
+                    <input type="email" id="login-email" placeholder="Email" required>
+                </div>
+                <div class="form-group">
+                    <input type="password" id="login-password" placeholder="Password" required>
+                </div>
+                <button type="submit">Login</button>
+                <div id="login-error" class="error"></div>
+            </form>
+            
+            <form id="signup-form" style="display: none;">
+                <div class="form-group">
+                    <input type="text" id="signup-firstname" placeholder="First Name" required>
+                </div>
+                <div class="form-group">
+                    <input type="text" id="signup-lastname" placeholder="Last Name" required>
+                </div>
+                <div class="form-group">
+                    <input type="email" id="signup-email" placeholder="Email" required>
+                </div>
+                <div class="form-group">
+                    <input type="password" id="signup-password" placeholder="Password (min 6 chars)" required>
+                </div>
+                <button type="submit">Sign Up</button>
+                <div id="signup-error" class="error"></div>
+            </form>
+        </div>
+        
+        <div class="chat-section" id="chat-section">
+          <div class="rooms-section">
+            <h3>Rooms</h3>
+            <div id="rooms-list"></div>
+            <div style="margin-top: 10px;">
+              <input
+                  type="text"
+                  id="new-room-input"
+                  placeholder="Room name :: user1@email.com, user2@email.com"
+                  style="width: 100%; margin-bottom: 5px;"
+              >
+              <button onclick="createRoom()">Create Room</button>
+              <div id="room-create-error" class="error"></div>
+            </div>
+          </div>
+            
+            <div class="messages-container" id="messages-container">
+                <div>Select a room to start chatting...</div>
+            </div>
+            
+            <div class="message-input-section">
+                <input type="text" id="message-input" class="message-input" placeholder="Type a message..." disabled>
+                <button id="send-btn" onclick="sendMessage()" disabled>Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    
+    <script>
+        const API_BASE = 'http://localhost:8080/api';
+        const WS_BASE = 'http://localhost:8080/ws/chat';
+        
+        let authToken = null;
+        let currentUser = null;
+        let stompClient = null;
+        let currentRoom = null;
+        let rooms = [];
+
+        // Auth functions
+        function showTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            if (tab === 'login') {
+                document.getElementById('login-form').style.display = 'block';
+                document.getElementById('signup-form').style.display = 'none';
+            } else {
+                document.getElementById('login-form').style.display = 'none';
+                document.getElementById('signup-form').style.display = 'block';
+            }
+        }
+
+        async function login(email, password) {
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    authToken = data.data.token;
+                    currentUser = data.data.user;
+                    showChatSection();
+                    connectWebSocket();
+                    loadRooms();
+                } else {
+                    throw new Error(data.message);
+                }
+            } catch (error) {
+                document.getElementById('login-error').textContent = error.message;
+            }
+        }
+
+        async function signup(firstName, lastName, email, password) {
+            try {
+                const response = await fetch(`${API_BASE}/auth/signup`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ firstName, lastName, email, password })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    authToken = data.data.token;
+                    currentUser = data.data.user;
+                    showChatSection();
+                    connectWebSocket();
+                    loadRooms();
+                } else {
+                    throw new Error(data.message);
+                }
+            } catch (error) {
+                document.getElementById('signup-error').textContent = error.message;
+            }
+        }
+
+        function showChatSection() {
+            document.getElementById('auth-section').style.display = 'none';
+            document.getElementById('chat-section').style.display = 'flex';
+            document.getElementById('user-info').style.display = 'block';
+            document.getElementById('user-name').textContent = `${currentUser.firstName} ${currentUser.lastName}`;
+        }
+
+        // WebSocket functions
+        function connectWebSocket() {
+            const socket = new SockJS(WS_BASE);
+            stompClient = Stomp.over(socket);
+            
+            stompClient.connect(
+                { 'Authorization': `Bearer ${authToken}` },
+                function(frame) {
+                    console.log('Connected: ' + frame);
+                    stompClient.send("/app/chat.addUser", {}, JSON.stringify({}));
+                },
+                function(error) {
+                    console.error('WebSocket connection error:', error);
+                }
+            );
+        }
+
+        function subscribeToRoom(roomId) {
+            if (stompClient && stompClient.connected) {
+                stompClient.subscribe(`/topic/room.${roomId}`, function(message) {
+                    const chatMessage = JSON.parse(message.body);
+                    displayMessage(chatMessage);
+                });
+            }
+        }
+
+        // Room functions
+        async function loadRooms() {
+            try {
+                const response = await fetch(`${API_BASE}/rooms`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    rooms = data.data;
+                    displayRooms();
+                }
+            } catch (error) {
+                console.error('Failed to load rooms:', error);
+            }
+        }
+
+        function displayRooms() {
+            const roomsList = document.getElementById('rooms-list');
+            roomsList.innerHTML = '';
+            
+            rooms.forEach(room => {
+                const roomDiv = document.createElement('div');
+                roomDiv.className = 'room-item';
+                roomDiv.textContent = room.name;
+                roomDiv.onclick = () => selectRoom(room);
+                roomsList.appendChild(roomDiv);
+            });
+        }
+
+        async function createRoom() {
+        const input = document.getElementById('new-room-input').value.trim();
+        const errorDiv = document.getElementById('room-create-error');
+        errorDiv.textContent = '';
+        
+        if (!input) {
+            errorDiv.textContent = 'Please enter room name and participants';
+            return;
+        }
+        
+        // Parse input: "RoomName :: email1@example.com, email2@example.com"
+        const parts = input.split('::').map(p => p.trim());
+        
+        if (parts.length !== 2) {
+            errorDiv.textContent = 'Format: "Room name :: email1, email2"';
+            return;
+        }
+        
+        const name = parts[0];
+        const emailsString = parts[1];
+        
+        if (!name) {
+            errorDiv.textContent = 'Room name is required';
+            return;
+        }
+        
+        // Parse participant emails (comma-separated)
+        const participantEmails = emailsString
+            .split(',')
+            .map(email => email.trim())
+            .filter(email => email.length > 0);
+        
+        // Validate emails
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        for (const email of participantEmails) {
+            if (!emailRegex.test(email)) {
+                errorDiv.textContent = `Invalid email: ${email}`;
+                return;
+            }
+        }
+            
+            try {
+                const response = await fetch(`${API_BASE}/rooms`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                body: JSON.stringify({
+                    name: name,
+                    description: '',
+                    participantEmails: participantEmails
+                })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                document.getElementById('new-room-input').value = '';
+                errorDiv.textContent = '';
+                    loadRooms();
+            } else {
+                errorDiv.textContent = data.message || 'Failed to create room';
+                }
+            } catch (error) {
+                console.error('Failed to create room:', error);
+            errorDiv.textContent = 'Network error. Please try again.';
+            }
+        }
+
+        async function selectRoom(room) {
+            currentRoom = room;
+            
+            // Update UI
+            document.querySelectorAll('.room-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            document.getElementById('message-input').disabled = false;
+            document.getElementById('send-btn').disabled = false;
+            
+            // Subscribe to room messages
+            subscribeToRoom(room.id);
+            
+            // Load existing messages
+            loadMessages(room.id);
+        }
+
+        async function loadMessages(roomId) {
+            try {
+                const response = await fetch(`${API_BASE}/rooms/${roomId}/messages?size=50`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    const messagesContainer = document.getElementById('messages-container');
+                    messagesContainer.innerHTML = '';
+                    
+                    data.data.content.reverse().forEach(message => {
+                        displayMessage({
+                            id: message.id,
+                            senderId: message.senderId,
+                            content: message.content,
+                            roomId: message.roomId,
+                        senderName: 'Unknown'
+                        });
+                    });
+                }
+            } catch (error) {
+                console.error('Failed to load messages:', error);
+            }
+        }
+
+        // Message functions
+        function sendMessage() {
+            const messageInput = document.getElementById('message-input');
+            const content = messageInput.value.trim();
+            
+            if (content && currentRoom && stompClient && stompClient.connected) {
+                stompClient.send("/app/chat.sendMessage", {}, JSON.stringify({
+                    roomId: currentRoom.id,
+                    content: content
+                }));
+                
+                messageInput.value = '';
+            }
+        }
+
+        function displayMessage(message) {
+            if (!currentRoom || message.roomId !== currentRoom.id) return;
+            
+            const messagesContainer = document.getElementById('messages-container');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${message.senderId === currentUser.id ? 'own' : ''}`;
+            
+            const senderName = message.senderId === currentUser.id ? 'You' : message.senderName;
+            messageDiv.innerHTML = `<strong>${senderName}:</strong> ${message.content}`;
+            
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // Event listeners
+        document.getElementById('login-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            login(email, password);
+        });
+
+        document.getElementById('signup-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const firstName = document.getElementById('signup-firstname').value;
+            const lastName = document.getElementById('signup-lastname').value;
+            const email = document.getElementById('signup-email').value;
+            const password = document.getElementById('signup-password').value;
+            signup(firstName, lastName, email, password);
+        });
+
+        document.getElementById('message-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        document.getElementById('logout-btn').addEventListener('click', function() {
+            if (stompClient) {
+                stompClient.disconnect();
+            }
+            authToken = null;
+            currentUser = null;
+            currentRoom = null;
+            document.getElementById('auth-section').style.display = 'block';
+            document.getElementById('chat-section').style.display = 'none';
+            document.getElementById('user-info').style.display = 'none';
+        });
+    </script>
+</body>
+</html>
+
