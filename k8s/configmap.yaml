@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: chat-app-config
+  namespace: chat-app
+data:
+  SPRING_PROFILES_ACTIVE: "${SPRING_PROFILES_ACTIVE}"
+  DB_HOST: "${DB_HOST}"
+  DB_PORT: "${DB_PORT}"
+  DB_NAME: "${DB_NAME}"
+  MONGO_HOST: "${MONGO_HOST}"
+  MONGO_PORT: "${MONGO_PORT}"
+  MONGO_DB: "${MONGO_DB}"
+  MONGO_AUTH_DB: "${MONGO_AUTH_DB}"
+  REDIS_HOST: "${REDIS_HOST}"
+  REDIS_PORT: "${REDIS_PORT}"
+  BACKEND_HOST: "backend"
+  BACKEND_PORT: "8080"
+  JWT_EXPIRATION: "${JWT_EXPIRATION}"

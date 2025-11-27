@@ -1,0 +1,51 @@
+#!/bin/bash
+
+# Exit immediately if a command exits with a non-zero status
+set -e
+
+SERVICE=$1
+
+if [ -z "$SERVICE" ]; then
+  echo "Usage: $0 <backend|frontend>"
+  exit 1
+fi
+
+if [ "$SERVICE" == "backend" ]; then
+  echo "🚀 Deploying Backend..."
+  
+  echo "📦 Building Docker image..."
+  docker build -t chat-app-backend:latest ./chat-app-backend
+  
+  echo "🔄 Loading image into Kind..."
+  kind load docker-image chat-app-backend:latest --name chat-cluster
+  
+  echo "⚙️  Applying Kubernetes configuration..."
+  kubectl apply -f k8s/backend.yaml
+  
+  echo "♻️  Restarting deployment..."
+  kubectl rollout restart deployment/backend -n chat-app
+  
+  echo "✅ Backend deployment completed!"
+
+elif [ "$SERVICE" == "frontend" ]; then
+  echo "🚀 Deploying Frontend..."
+  
+  echo "📦 Building Docker image..."
+  # Using default BASE_URL=/backend as per Dockerfile, but specifying it explicitly for clarity
+  docker build --build-arg BASE_URL=/backend -t chat-app-frontend:latest ./chat-app-frontend
+  
+  echo "🔄 Loading image into Kind..."
+  kind load docker-image chat-app-frontend:latest --name chat-cluster
+  
+  echo "⚙️  Applying Kubernetes configuration..."
+  kubectl apply -f k8s/frontend.yaml
+  
+  echo "♻️  Restarting deployment..."
+  kubectl rollout restart deployment/frontend -n chat-app
+  
+  echo "✅ Frontend deployment completed!"
+
+else
+  echo "❌ Invalid service: $SERVICE. Use 'backend' or 'frontend'."
+  exit 1
+fi

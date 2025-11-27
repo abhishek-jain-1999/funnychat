@@ -1,0 +1,107 @@
+spring:
+  application:
+    name: chat-app-backend
+
+  profiles:
+    active: local
+
+  # Local DB configurations (dev on laptop)
+  datasource:
+    url: jdbc:postgresql://localhost:5432/chatapp
+    username: chatuser
+    password: chatpass
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        # Optional as of Hibernate 6, but ok for clarity
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+  data:
+    # Local MongoDB configuration
+    mongodb:
+      uri: mongodb://localhost:27017/chatapp
+      auto-index-creation: true
+
+    # Local Redis configuration
+    redis:
+      host: localhost
+      port: 6379
+      password: ""
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-wait: -1ms
+          max-idle: 8
+          min-idle: 0
+
+# JWT Configuration (local default)
+jwt:
+  secret: mySecretKey123456789012345678901234567890
+  expiration: 86400 # 24 hours in seconds
+
+# Server configuration
+server:
+  port: 8080
+
+# Actuator endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+
+# Logging configuration
+logging:
+  level:
+    com.abhishek.chat_app_backend: DEBUG
+    org.springframework.security: DEBUG
+    org.springframework.web.socket: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# OpenAPI Documentation
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+---
+# Prod profile: running inside docker-compose
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+  datasource:
+    # No defaults here; must be provided by env
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+    username: ${DB_USER}
+    password: ${DB_PASS}
+
+  data:
+    mongodb:
+      # With username/password and no defaults: all must come from env
+      uri: mongodb://${MONGO_USER}:${MONGO_PASSWORD}@${MONGO_HOST}:${MONGO_PORT}/${MONGO_DB}?authSource=${MONGO_AUTH_DB}
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+
+jwt:
+  # No defaults here; must be provided by env in prod
+  secret: ${JWT_SECRET}
+  expiration: ${JWT_EXPIRATION}
+
+server:
+  port: 8080

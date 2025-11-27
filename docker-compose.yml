@@ -1,0 +1,156 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: chat-app-postgres
+    environment:
+      POSTGRES_DB: ${DB_NAME:-chatapp}
+      POSTGRES_USER: ${DB_USER:-chatuser}
+      POSTGRES_PASSWORD: ${DB_PASS:-chatpass}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - chat-network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${DB_USER:-chatuser} -d ${DB_NAME:-chatapp}" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+  mongo:
+    image: mongo:7
+    container_name: chat-app-mongo
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-chatuser}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-chatpass}
+      MONGO_INITDB_DATABASE: ${MONGO_DB:-chatapp}
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+      - mongo_config:/data/configdb
+    networks:
+      - chat-network
+    healthcheck:
+      test: [ "CMD-SHELL", "echo 'db.runCommand({ ping: 1 }).ok' | mongosh localhost:${MONGO_PORT:-27017}/${MONGO_DB:-chatapp} --quiet" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+  redis:
+    image: redis:7-alpine
+    container_name: chat-app-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - chat-network
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+  frontend:
+    build:
+      context: chat-app-frontend
+      dockerfile: Dockerfile
+      args:
+        - BASE_URL=/backend
+    container_name: chat-app-frontend
+    image: chat-app-frontend:latest
+    # Ports removed, now internal only
+    environment:
+      - BACKEND_HOST=backend
+      - BACKEND_PORT=8080
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - chat-network
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: chat-app-backend
+      dockerfile: Dockerfile
+    container_name: chat-app-backend
+    image: chat-app-backend:latest
+    # Ports removed, now internal only (optional, can keep for debugging)
+    expose:
+      - "8080"
+    environment:
+      # Spring profile
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+
+      # Postgres
+      DB_HOST: ${DB_HOST:-postgres}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_NAME: ${DB_NAME:-chatapp}
+      DB_USER: ${DB_USER:-chatuser}
+      DB_PASS: ${DB_PASS:-chatpass}
+
+      # Mongo
+      MONGO_HOST: ${MONGO_HOST:-mongo}
+      MONGO_PORT: ${MONGO_PORT:-27017}
+      MONGO_USER: ${MONGO_USER:-chatuser}
+      MONGO_PASSWORD: ${MONGO_PASSWORD:-chatpass}
+      MONGO_DB: ${MONGO_DB:-chatapp}
+      MONGO_AUTH_DB: ${MONGO_AUTH_DB:-admin}
+
+      # Redis
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+
+      # JWT
+      JWT_SECRET: ${JWT_SECRET:-my-secret9274923874923847294823}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-604800} # 7 days
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - chat-network
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/actuator/health" ]
+      interval: 300s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    container_name: chat-app-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - chat-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  mongo_data:
+  mongo_config:
+  redis_data:
+
+
+networks:
+  chat-network:
+    driver: bridge

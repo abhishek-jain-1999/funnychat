@@ -1,0 +1,11 @@
+/.env
+/console_*.log
+/k6_*.log
+/summary_*.html
+/users*.csv
+.idea
+
+/chat-app-frontend/test/*
+/chat-app-frontend/devtools_options.yaml
+/chat-app-frontend/chat_app_frontend.iml
+/chat-app-frontend/
