@@ -1,15 +1,22 @@
+import 'dart:io';
+
 import 'package:chat_app_frontend/models/message.dart';
 import 'package:chat_app_frontend/models/user.dart';
 import 'package:chat_app_frontend/services/api_service.dart';
 import 'package:chat_app_frontend/services/log_service.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../models/room.dart';
+import '../services/media_service.dart';
 import '../services/websocket_service.dart';
 import 'list_notifier.dart';
+import 'media_upload_notifier.dart';
 
 class ChatAppDataNotifier {
   late final WebSocketService _wsService = WebSocketService(roomUpdateCallback, roomChatMessageCallback);
+  late final MediaService _mediaService;
+  late final MediaUploadNotifier _mediaUploadNotifier;
 
   ListNotifier<Room> listRoomsNotifier = ListNotifier();
   ListNotifier<Message> messageNotifier = ListNotifier();
@@ -23,10 +30,17 @@ class ChatAppDataNotifier {
 
   User? get currentUser => _currentUser;
 
+  MediaUploadNotifier get mediaUploadNotifier => _mediaUploadNotifier;
+
   Future<void> start(User? currentUser, List<Room> result) async {
     LogService.info('WebSocket: start...');
     _currentUser = currentUser;
     listRoomsNotifier.value = result;
+    
+    // Initialize media services
+    _mediaService = MediaService();
+    _mediaUploadNotifier = MediaUploadNotifier(_mediaService);
+    
     await _wsService.connect(currentUser?.id);
     readyNotifier.value= true;
   }
@@ -40,6 +54,7 @@ class ChatAppDataNotifier {
       messageType: chatMessage.messageType,
       createdAt: chatMessage.createdAt,
       isUserSelf: chatMessage.senderId == _currentUser?.id,
+      media: chatMessage.media,
     ));
   }
 
@@ -126,10 +141,54 @@ class ChatAppDataNotifier {
     );
   }
 
+  Future<void> uploadMedia({
+    required String clientId,
+    required String roomId,
+    required String fileName,
+    required String mimeType,
+    required XFile file,
+    int? width,
+    int? height,
+  }) async {
+    try {
+      final sizeBytes = await file.length();
+      final mediaAttachment = await _mediaUploadNotifier.uploadMedia(
+        clientId: clientId,
+        roomId: roomId,
+        fileName: fileName,
+        mimeType: mimeType,
+        sizeBytes: sizeBytes,
+        file: file,
+        width: width,
+        height: height,
+      );
+
+      // Send message with media attachment
+      if (mediaAttachment != null) {
+        _wsService.sendMessage(
+          roomId: roomId,
+          content: '',
+          messageType: 'IMAGE',
+          media: {
+            'mediaId': mediaAttachment.mediaId,
+            'mimeType': mediaAttachment.mimeType,
+            'sizeBytes': mediaAttachment.sizeBytes,
+            if (mediaAttachment.width != null) 'width': mediaAttachment.width,
+            if (mediaAttachment.height != null) 'height': mediaAttachment.height,
+          },
+        );
+      }
+    } catch (e,st) {
+      LogService.error('Media upload failed: $e');
+      rethrow;
+    }
+  }
+
   void dispose() {
     listRoomsNotifier.dispose();
     roomsNotifier.dispose();
     messageNotifier.dispose();
+    _mediaUploadNotifier.dispose();
     _wsService.disconnect();
   }
 }

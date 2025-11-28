@@ -13,7 +13,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - chat-network
+      - internal-network
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U ${DB_USER:-chatuser} -d ${DB_NAME:-chatapp}" ]
       interval: 30s
@@ -34,7 +34,7 @@ services:
       - mongo_data:/data/db
       - mongo_config:/data/configdb
     networks:
-      - chat-network
+      - internal-network
     healthcheck:
       test: [ "CMD-SHELL", "echo 'db.runCommand({ ping: 1 }).ok' | mongosh localhost:${MONGO_PORT:-27017}/${MONGO_DB:-chatapp} --quiet" ]
       interval: 30s
@@ -50,13 +50,34 @@ services:
     volumes:
       - redis_data:/data
     networks:
-      - chat-network
+      - internal-network
     healthcheck:
       test: [ "CMD", "redis-cli", "ping" ]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 5s
+
+  minio:
+    image: minio/minio:latest
+    container_name: chat-app-minio
+    ports:
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - internal-network
+      - public-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   frontend:
     build:
@@ -66,7 +87,6 @@ services:
         - BASE_URL=/backend
     container_name: chat-app-frontend
     image: chat-app-frontend:latest
-    # Ports removed, now internal only
     environment:
       - BACKEND_HOST=backend
       - BACKEND_PORT=8080
@@ -74,7 +94,7 @@ services:
       backend:
         condition: service_healthy
     networks:
-      - chat-network
+      - public-network
     restart: unless-stopped
 
   backend:
@@ -113,6 +133,8 @@ services:
       JWT_SECRET: ${JWT_SECRET:-my-secret9274923874923847294823}
       JWT_EXPIRATION: ${JWT_EXPIRATION:-604800} # 7 days
 
+      MEDIA_SERVICE_TOKEN: ${MEDIA_SERVICE_TOKEN:-}
+
     depends_on:
       postgres:
         condition: service_healthy
@@ -121,13 +143,56 @@ services:
       redis:
         condition: service_healthy
     networks:
-      - chat-network
+      - internal-network
+      - public-network
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8080/actuator/health" ]
       interval: 300s
       timeout: 10s
       retries: 3
-      start_period: 5s
+      start_period: 30s
+      start_interval: 3s
+    restart: unless-stopped
+
+  backend-media:
+    build:
+      context: chat-app-backend-media
+      dockerfile: Dockerfile
+    container_name: chat-app-backend-media
+    image: chat-app-backend-media:latest
+    expose:
+      - "8081"
+    environment:
+      # Spring profile
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+
+      # MinIO
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MINIO_BUCKET: ${MINIO_BUCKET:-chat-media}
+      MINIO_REGION: ${MINIO_REGION:-us-east-1}
+      MINIO_PRESIGNED_UPLOAD_EXPIRY: ${MINIO_PRESIGNED_UPLOAD_EXPIRY:-3600}
+      MINIO_PRESIGNED_DOWNLOAD_EXPIRY: ${MINIO_PRESIGNED_DOWNLOAD_EXPIRY:-1800}
+      MINIO_PUBLIC_URL: ${MINIO_PUBLIC_URL:-http://localhost:9000}
+
+      # Media limits
+      MEDIA_MAX_FILE_SIZE: ${MEDIA_MAX_FILE_SIZE:-2147483648}
+      MEDIA_ALLOWED_MIME_TYPES: ${MEDIA_ALLOWED_MIME_TYPES:-image/jpeg,image/png,image/webp,image/gif}
+      MEDIA_SERVICE_TOKEN: ${MEDIA_SERVICE_TOKEN:-}
+
+    depends_on:
+      minio:
+        condition: service_healthy
+    networks:
+      - internal-network
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8081/actuator/health" ]
+      interval: 300s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+      start_interval: 3s
     restart: unless-stopped
 
   nginx:
@@ -141,7 +206,7 @@ services:
       - frontend
       - backend
     networks:
-      - chat-network
+      - public-network
     restart: unless-stopped
 
 volumes:
@@ -149,8 +214,11 @@ volumes:
   mongo_data:
   mongo_config:
   redis_data:
+  minio_data:
 
 
 networks:
-  chat-network:
+  internal-network:
+    driver: bridge
+  public-network:
     driver: bridge

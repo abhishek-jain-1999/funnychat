@@ -9,7 +9,10 @@ metadata:
     nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
-    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "*"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, PUT, POST, DELETE, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-headers: "Content-Type, Authorization, x-amz-content-sha256, x-amz-date"
 spec:
   ingressClassName: nginx
   rules:
@@ -30,3 +33,68 @@ spec:
                 name: frontend
                 port:
                   number: 80
+---
+# ---------------------------------------------------------
+# 2. MinIO Specific Ingress (High Performance Uploads)
+# Customized for 2GB+ files and streaming
+# ---------------------------------------------------------
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: chat-app-minio-ingress
+  namespace: chat-app
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/use-regex: "true"
+
+
+    # Add this to fix the Signature Mismatch on API
+#    nginx.ingress.kubernetes.io/configuration-snippet: |
+#      proxy_set_header Host minio:9000;
+    nginx.ingress.kubernetes.io/upstream-vhost: "minio:9000"
+
+
+
+    # REQUIRED: Allows the "Content-Length" header to be up to 2GB
+    nginx.ingress.kubernetes.io/proxy-body-size: "2048m"
+
+    # REQUIRED: Disables NGINX buffering.
+    # NGINX will stream data to MinIO immediately instead of waiting for the full file.
+    nginx.ingress.kubernetes.io/proxy-request-buffering: "off"
+
+    # Long timeouts prevent connection drops during slow uploads
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+
+    # CORS Settings
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    # Regex to allow localhost (any port) OR chat.abhishek.com
+    nginx.ingress.kubernetes.io/cors-allow-origin: "https?://(localhost|chat\\.abhishek\\.com)(:[0-9]+)?"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, PUT, POST, DELETE, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-headers: "Content-Type, Authorization, x-amz-content-sha256, x-amz-date"
+    nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: chat.abhishek.com
+      http:
+        paths:
+          # API Access (Port 9000)
+          - path: /minio(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: minio
+                port:
+                  number: 9000
+
+          # Console/UI Access (Port 9001)
+          # Note: MinIO Console might redirect to /login if not configured with base path.
+          # Try accessing http://chat.abhishek.com/minio-ui/
+          - path: /minio-ui(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: minio
+                port:
+                  number: 9001

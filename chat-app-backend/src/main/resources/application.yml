@@ -50,6 +50,18 @@ jwt:
 server:
   port: 8080
 
+# Media service configuration
+media:
+  allowed-mime-types:
+    - image/jpeg
+    - image/png
+    - image/webp
+    - image/gif
+  max-file-size: 10485760 # 10MB default
+  service:
+    url: http://backend-media:8081
+    token: ${MEDIA_SERVICE_TOKEN:}
+
 # Actuator endpoints
 management:
   endpoints:
@@ -105,3 +117,10 @@ jwt:
 
 server:
   port: 8080
+
+media:
+  allowed-mime-types: ${MEDIA_ALLOWED_MIME_TYPES:image/jpeg,image/png,image/webp,image/gif}
+  max-file-size: ${MEDIA_MAX_FILE_SIZE:10485760}
+  service:
+    url: http://backend-media:8081
+    token: ${MEDIA_SERVICE_TOKEN:}

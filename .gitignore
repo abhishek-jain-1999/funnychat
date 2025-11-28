@@ -6,5 +6,7 @@
 .idea
 
 /chat-app-frontend/test/*
+/chat-app-frontend/.dart_tool/*
+/chat-app-frontend/build/*
 /chat-app-frontend/devtools_options.yaml
 /chat-app-frontend/chat_app_frontend.iml

@@ -11,6 +11,12 @@ class ApiConstants {
   // Room endpoints
   static const String rooms = '$apiPrefix/rooms';
   
+  // Message endpoints
+  static String roomMessages(String roomId) => '$apiPrefix/rooms/$roomId/messages';
+  
+  // Media endpoints
+  static String roomMediaUploadUrl(String roomId) => '$apiPrefix/rooms/$roomId/media/upload-url';
+  
   // WebSocket endpoint
   static const String wsEndpoint = '/ws/chat';
   

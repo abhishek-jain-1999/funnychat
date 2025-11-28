@@ -67,12 +67,21 @@ data class RoomDto(
     val createdAt: LocalDateTime
 )
 
-// Message DTOs
-data class SendMessageRequest(
-    @field:NotBlank(message = "Content is required")
-    val content: String,
-    
-    val messageType: String = "TEXT"
+data class MediaSendPayload(
+    val mediaId: String,
+    val mimeType: String,
+    val sizeBytes: Long,
+    val width: Int? = null,
+    val height: Int? = null
+)
+
+data class MediaAttachmentDto(
+    val mediaId: String,
+    val url: String,
+    val mimeType: String,
+    val sizeBytes: Long,
+    val width: Int? = null,
+    val height: Int? = null
 )
 
 data class MessageDto(
@@ -83,14 +92,16 @@ data class MessageDto(
     val messageType: String,
     val createdAt: LocalDateTime,
     val edited: Boolean = false,
-    val isUserSelf: Boolean = false
+    val isUserSelf: Boolean = false,
+    val media: MediaAttachmentDto? = null
 )
 
 // WebSocket DTOs
 data class ChatMessagePayload(
     val roomId: String,
-    val content: String,
-    val messageType: String = "TEXT"
+    val content: String = "",
+    val messageType: String = "TEXT",
+    val media: MediaSendPayload? = null
 )
 
 data class ChatMessageResponse(
@@ -100,7 +111,8 @@ data class ChatMessageResponse(
     val senderName: String,
     val content: String,
     val messageType: String,
-    val createdAt: LocalDateTime
+    val createdAt: LocalDateTime,
+    val media: MediaAttachmentDto? = null
 )
 
 data class RoomUpdatePayload(
@@ -136,4 +148,18 @@ data class PagedResponse<T>(
     val totalElements: Long,
     val totalPages: Int,
     val last: Boolean
+)
+
+// Media DTOs
+data class MediaUploadRequest(
+    val fileName: String,
+    val mimeType: String,
+    val sizeBytes: Long
+)
+
+data class MediaUploadResponse(
+    val mediaId: String,
+    val uploadUrl: String,
+    val objectKey: String,
+    val expiresIn: Int
 )

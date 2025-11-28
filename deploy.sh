@@ -6,8 +6,14 @@ set -e
 SERVICE=$1
 
 if [ -z "$SERVICE" ]; then
-  echo "Usage: $0 <backend|frontend>"
+  echo "Usage: $0 <backend|frontend|backend-media>"
   exit 1
+fi
+
+# Handle legacy name
+if [ "$SERVICE" == "backend-media" ]; then
+  echo "ℹ️  'backend-media' target has been renamed to 'backend-media'. Using new name..."
+  SERVICE="backend-media"
 fi
 
 if [ "$SERVICE" == "backend" ]; then
@@ -45,7 +51,24 @@ elif [ "$SERVICE" == "frontend" ]; then
   
   echo "✅ Frontend deployment completed!"
 
+elif [ "$SERVICE" == "backend-media" ]; then
+  echo "🚀 Deploying Media Service..."
+  
+  echo "📦 Building Docker image..."
+  docker build -t chat-app-backend-media:latest ./chat-app-backend-media
+  
+  echo "🔄 Loading image into Kind..."
+  kind load docker-image chat-app-backend-media:latest --name chat-cluster
+  
+  echo "⚙️  Applying Kubernetes configuration..."
+  kubectl apply -f k8s/media-service.yaml
+  
+  echo "♻️  Restarting deployment..."
+  kubectl rollout restart deployment/backend-media -n chat-app
+  
+  echo "✅ Media Service deployment completed!"
+
 else
-  echo "❌ Invalid service: $SERVICE. Use 'backend' or 'frontend'."
+  echo "❌ Invalid service: $SERVICE. Use 'backend', 'frontend', or 'backend-media'."
   exit 1
 fi

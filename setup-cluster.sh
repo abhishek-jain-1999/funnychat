@@ -66,6 +66,9 @@ export DB_PASS_B64=$(echo -n "$DB_PASS" | base64)
 export MONGO_USER_B64=$(echo -n "$MONGO_USER" | base64)
 export MONGO_PASSWORD_B64=$(echo -n "$MONGO_PASSWORD" | base64)
 export JWT_SECRET_B64=$(echo -n "$JWT_SECRET" | base64)
+export MINIO_ROOT_USER_B64=$(echo -n "${MINIO_ROOT_USER:-minioadmin}" | base64)
+export MINIO_ROOT_PASSWORD_B64=$(echo -n "${MINIO_ROOT_PASSWORD:-minioadmin}" | base64)
+export MEDIA_SERVICE_TOKEN_B64=$(echo -n "${MEDIA_SERVICE_TOKEN:-}" | base64)
 
 # Use envsubst to replace variables in the templates and apply them
 # We use a temporary file to avoid overwriting the source templates if they were to be kept as templates
@@ -85,11 +88,14 @@ echo "🔨 Building Docker images..."
 docker build -t chat-app-frontend:latest --build-arg BASE_URL=/backend ./chat-app-frontend
 # Build Backend
 docker build -t chat-app-backend:latest ./chat-app-backend
+# Build Media Service
+docker build -t chat-app-backend-media:latest ./chat-app-backend-media
 
 # 6. Load Images into KIND
 echo "🚚 Loading images into KIND nodes..."
 kind load docker-image chat-app-frontend:latest --name chat-cluster
 kind load docker-image chat-app-backend:latest --name chat-cluster
+kind load docker-image chat-app-backend-media:latest --name chat-cluster
 
 # 7. Apply Manifests
 echo "📄 Applying Kubernetes manifests..."
@@ -98,6 +104,8 @@ echo "📄 Applying Kubernetes manifests..."
 kubectl apply -f k8s/postgres.yaml
 kubectl apply -f k8s/mongo.yaml
 kubectl apply -f k8s/redis.yaml
+kubectl apply -f k8s/minio.yaml
+kubectl apply -f k8s/backend-media.yaml
 kubectl apply -f k8s/backend.yaml
 kubectl apply -f k8s/frontend.yaml
 kubectl apply -f k8s/ingress.yaml

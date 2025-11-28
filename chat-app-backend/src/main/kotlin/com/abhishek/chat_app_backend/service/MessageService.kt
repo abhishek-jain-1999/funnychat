@@ -1,16 +1,19 @@
 package com.abhishek.chat_app_backend.service
 
+import com.abhishek.chat_app_backend.document.Attachment
 import com.abhishek.chat_app_backend.document.Message
 import com.abhishek.chat_app_backend.document.MessageType
 import com.abhishek.chat_app_backend.dto.ChatMessagePayload
 import com.abhishek.chat_app_backend.dto.ChatMessageResponse
+import com.abhishek.chat_app_backend.dto.MediaAttachmentDto
+import com.abhishek.chat_app_backend.dto.MediaSendPayload
 import com.abhishek.chat_app_backend.dto.MessageDto
 import com.abhishek.chat_app_backend.dto.PagedResponse
 import com.abhishek.chat_app_backend.repository.MessageRepository
+import com.abhishek.chat_app_backend.repository.RoomRepository
 import org.slf4j.LoggerFactory
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
-import org.springframework.messaging.simp.SimpMessagingTemplate
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
@@ -20,10 +23,11 @@ class MessageService(
     private val messageRepository: MessageRepository,
     private val roomService: RoomService,
     private val userService: UserService,
-    private val messagingTemplate: SimpMessagingTemplate,
     private val redisMessageService: RedisMessageService,
-    private val roomRepository: com.abhishek.chat_app_backend.repository.RoomRepository,
-    private val roomUpdateNotificationService: RoomUpdateNotificationService
+    private val roomRepository: RoomRepository,
+    private val roomUpdateNotificationService: RoomUpdateNotificationService,
+    private val mediaMetadataService: MediaMetadataService,
+    private val mediaInternalClient: MediaInternalClient
 ) {
     
     private val logger = LoggerFactory.getLogger(MessageService::class.java)
@@ -41,19 +45,43 @@ class MessageService(
         // Get sender details
         val sender = userService.findUserById(senderId)
         
+        if (payload.media != null && payload.messageType.uppercase() != MessageType.IMAGE.name) {
+            throw IllegalArgumentException("Media payload is only supported for IMAGE messages")
+        }
+        
+        var responseMedia: MediaAttachmentDto? = null
+        val attachments = if (payload.media != null) {
+            val (attachment, attachmentDto) = prepareMediaAttachment(
+                mediaPayload = payload.media,
+                roomId = payload.roomId,
+                senderId = senderId
+            )
+            responseMedia = attachmentDto
+            listOf(attachment)
+        } else {
+            emptyList()
+        }
+        
         // Create and save message
         val message = Message(
             roomId = payload.roomId,
             senderId = senderId,
             content = payload.content,
-            messageType = MessageType.valueOf(payload.messageType.uppercase())
+            messageType = MessageType.valueOf(payload.messageType.uppercase()),
+            attachments = attachments
         )
         
         val savedMessage = messageRepository.save(message)
         
         // Update room's lastMessage and lastMessageTime
+        val lastMessageText = when (payload.messageType) {
+            "IMAGE" -> "📷 Image"
+            "FILE" -> "📎 File"
+            else -> payload.content
+        }
+        
         val updatedRoom = room.copy(
-            lastMessage = payload.content,
+            lastMessage = lastMessageText,
             lastMessageTime = savedMessage.createdAt
         )
         roomRepository.save(updatedRoom)
@@ -65,7 +93,8 @@ class MessageService(
             senderName = "${sender.firstName} ${sender.lastName}",
             content = savedMessage.content,
             messageType = savedMessage.messageType.name,
-            createdAt = savedMessage.createdAt
+            createdAt = savedMessage.createdAt,
+            media = responseMedia
         )
         
         // Broadcast to WebSocket
@@ -80,7 +109,7 @@ class MessageService(
             room.participants,
             senderId,
             "${sender.firstName} ${sender.lastName}",
-            payload.content,
+            lastMessageText,
             savedMessage.createdAt
         )
         
@@ -140,8 +169,68 @@ class MessageService(
             messageType = this.messageType.name,
             createdAt = this.createdAt,
             edited = this.edited,
-            isUserSelf = userId == this.senderId
+            isUserSelf = userId == this.senderId,
+            media = if (this.attachments.isNotEmpty()) {
+                val attachment = this.attachments.first()
+                MediaAttachmentDto(
+                    mediaId = attachment.mediaId ?: "",
+                    url = attachment.fileUrl,
+                    mimeType = attachment.mimeType,
+                    sizeBytes = attachment.fileSize,
+                    width = attachment.width,
+                    height = attachment.height
+                )
+            } else null
         )
     }
+    
+    private fun prepareMediaAttachment(
+        mediaPayload: MediaSendPayload,
+        roomId: String,
+        senderId: Long
+    ): Pair<Attachment, MediaAttachmentDto> {
+        val metadata = mediaMetadataService.getPendingMedia(
+            mediaId = mediaPayload.mediaId,
+            userId = senderId,
+            roomId = roomId
+        )
+        
+        val verifyResponse = mediaInternalClient.verifyUpload(
+            objectKey = metadata.objectKey,
+            expectedSize = metadata.sizeBytes
+        )
+        
+        if (!verifyResponse.verified) {
+            mediaMetadataService.markFailed(metadata)
+            throw IllegalArgumentException("Media verification failed for ${metadata.id}")
+        }
+        
+        val updatedMetadata = mediaMetadataService.markActive(
+            metadata = metadata,
+            mediaUrl = verifyResponse.publicUrl,
+            actualSize = verifyResponse.actualSize
+        )
+        
+        val attachment = Attachment(
+            fileName = updatedMetadata.objectKey.substringAfterLast('/'),
+            fileUrl = verifyResponse.publicUrl,
+            fileSize = updatedMetadata.sizeBytes,
+            mimeType = mediaPayload.mimeType,
+            objectKey = updatedMetadata.objectKey,
+            mediaId = updatedMetadata.id,
+            width = mediaPayload.width,
+            height = mediaPayload.height
+        )
+        
+        val attachmentDto = MediaAttachmentDto(
+            mediaId = updatedMetadata.id!!,
+            url = verifyResponse.publicUrl,
+            mimeType = mediaPayload.mimeType,
+            sizeBytes = updatedMetadata.sizeBytes,
+            width = mediaPayload.width,
+            height = mediaPayload.height
+        )
+        
+        return attachment to attachmentDto
+    }
 }
-

@@ -3,6 +3,8 @@ package com.abhishek.chat_app_backend.controller
 import com.abhishek.chat_app_backend.config.CustomUserDetails
 import com.abhishek.chat_app_backend.dto.ApiResponse
 import com.abhishek.chat_app_backend.dto.CreateRoomRequest
+import com.abhishek.chat_app_backend.dto.MediaUploadRequest
+import com.abhishek.chat_app_backend.dto.MediaUploadResponse
 import com.abhishek.chat_app_backend.dto.MessageDto
 import com.abhishek.chat_app_backend.dto.PagedResponse
 import com.abhishek.chat_app_backend.dto.RoomDto
@@ -17,6 +19,7 @@ import jakarta.validation.Valid
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.security.access.AccessDeniedException
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -86,5 +89,39 @@ class RoomController(
         return messages.successResponse(
             message = "Messages retrieved successfully"
         )
+    }
+    
+
+    
+    @PostMapping("/{roomId}/media/upload-url")
+    @Operation(summary = "Request upload URL for media attachment")
+    fun requestMediaUploadUrl(
+        @PathVariable roomId: String,
+        @Valid @RequestBody request: MediaUploadRequest,
+        @AuthenticationPrincipal userDetails: CustomUserDetails
+    ): ResponseEntity<ApiResponse<MediaUploadResponse>> {
+        return try {
+            val response = roomService.requestMediaUploadUrl(
+                roomId = roomId,
+                userId = userDetails.userId,
+                request = request
+            )
+            response.successResponse(
+                message = "Upload URL generated successfully",
+                status = HttpStatus.OK
+            )
+        } catch (e: AccessDeniedException) {
+            e.message.toString().errorResponse(
+                status = HttpStatus.FORBIDDEN
+            )
+        } catch (e: IllegalArgumentException) {
+            e.message.toString().errorResponse(
+                status = HttpStatus.BAD_REQUEST
+            )
+        } catch (e: Exception) {
+            "Failed to generate upload URL: ${e.message}".errorResponse(
+                status = HttpStatus.INTERNAL_SERVER_ERROR
+            )
+        }
     }
 }

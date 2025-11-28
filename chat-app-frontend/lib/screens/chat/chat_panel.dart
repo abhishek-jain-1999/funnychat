@@ -1,12 +1,18 @@
+
 import 'package:chat_app_frontend/notifiers/chat_app_data_notifier.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:mime/mime.dart';
 import 'package:provider/provider.dart';
-import '../../config/theme.dart';
+
 import '../../config/constants.dart';
 import '../../config/string_constants.dart';
+import '../../config/theme.dart';
 import '../../models/message.dart';
+import '../../notifiers/media_upload_notifier.dart';
 import '../../services/snackbar_service.dart';
+import '../../widgets/media_upload_progress.dart';
 
 class ChatPanel extends StatefulWidget {
   final VoidCallback? onBack;
@@ -21,10 +27,12 @@ class ChatPanel extends StatefulWidget {
 }
 
 class _ChatPanelState extends State<ChatPanel> {
-
-
+  final GlobalKey<OverlayState> _uploadOverlayKey = GlobalKey<OverlayState>();
+  OverlayEntry? _uploadOverlayEntry;
+  MediaUploadNotifier? _mediaUploadNotifier;
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final ImagePicker _picker = ImagePicker();
 
   final ValueNotifier<bool> _hasText = ValueNotifier(false);
 
@@ -35,7 +43,21 @@ class _ChatPanelState extends State<ChatPanel> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final uploader = Provider.of<ChatAppDataNotifier>(context, listen: false).mediaUploadNotifier;
+    if (_mediaUploadNotifier != uploader) {
+      _mediaUploadNotifier?.removeListener(_handleUploadStateChanged);
+      _mediaUploadNotifier = uploader;
+      _mediaUploadNotifier?.addListener(_handleUploadStateChanged);
+      WidgetsBinding.instance.addPostFrameCallback((_) => _handleUploadStateChanged());
+    }
+  }
+
+  @override
   void dispose() {
+    _mediaUploadNotifier?.removeListener(_handleUploadStateChanged);
+    _removeUploadOverlay();
     _messageController.dispose();
     _scrollController.dispose();
     _hasText.dispose();
@@ -84,18 +106,141 @@ class _ChatPanelState extends State<ChatPanel> {
     _messageController.clear();
   }
 
+  void _handleUploadStateChanged() {
+    final notifier = _mediaUploadNotifier;
+    if (notifier == null) return;
+
+    final hasActiveUploads = notifier.uploads.values.any(
+      (upload) => upload.status != MediaUploadStatus.completed,
+    );
+
+    if (!hasActiveUploads) {
+      _removeUploadOverlay();
+      return;
+    }
+
+    final overlayState = _uploadOverlayKey.currentState;
+    if (overlayState == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _handleUploadStateChanged());
+      return;
+    }
+
+    if (_uploadOverlayEntry == null) {
+      _uploadOverlayEntry = OverlayEntry(
+        builder: (context) => _buildUploadOverlay(),
+      );
+      overlayState.insert(_uploadOverlayEntry!);
+    } else {
+      _uploadOverlayEntry!.markNeedsBuild();
+    }
+  }
+
+  void _removeUploadOverlay() {
+    _uploadOverlayEntry?.remove();
+    _uploadOverlayEntry = null;
+  }
+
+  Widget _buildUploadOverlay() {
+    final notifier = _mediaUploadNotifier;
+    if (notifier == null) return const SizedBox.shrink();
+
+    final activeUploads = notifier.uploads.entries
+        .where((entry) => entry.value.status != MediaUploadStatus.completed)
+        .map((entry) => entry.key)
+        .toList();
+
+    if (activeUploads.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final uploadWidgets = activeUploads
+        .map(
+          (clientId) => Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: MediaUploadProgress(
+              clientId: clientId,
+              mediaUploadNotifier: notifier, // Pass the notifier directly
+            ),
+          ),
+        )
+        .toList();
+
+    return Positioned(
+      right: 16,
+      top: 16,
+      child: SafeArea(
+        child: Material(
+          color: AppTheme.secondaryBackground.withOpacity(0.95),
+          elevation: 8,
+          borderRadius: BorderRadius.circular(12),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 360),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.cloud_upload, color: AppTheme.accentColor, size: 18),
+                      SizedBox(width: 8),
+                      Text(
+                        'Media uploads',
+                        style: TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  const Divider(height: 1),
+                  const SizedBox(height: 8),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 320),
+                    child: SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: uploadWidgets,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final chatData = Provider.of<ChatAppDataNotifier>(context);
-    return Container(
+    final content = Container(
       color: AppTheme.primaryBackground,
       child: Column(
         children: [
           _buildHeader(chatData),
-          buildChatArea(chatData),
+          Expanded(
+            child: buildChatArea(chatData),
+          ),
           _buildInputArea(),
         ],
       ),
+    );
+
+    return Stack(
+      children: [
+        content,
+        Positioned.fill(
+          child: Overlay(
+            key: _uploadOverlayKey,
+            initialEntries: const [],
+          ),
+        ),
+      ],
     );
   }
 
@@ -104,13 +249,10 @@ class _ChatPanelState extends State<ChatPanel> {
       valueListenable: chatData.messageNotifier,
       builder: (context, messages, child) {
         _scrollToBottom();
-        return Expanded(
-          child: messages.isEmpty ? _buildEmptyState() : _buildMessagesListView(messages),
-        );
+        return messages.isEmpty ? _buildEmptyState() : _buildMessagesListView(messages);
       },
     );
   }
-
 
   Widget _buildEmptyState() {
     return const Center(
@@ -129,11 +271,9 @@ class _ChatPanelState extends State<ChatPanel> {
     return Container(
       decoration: BoxDecoration(
         image: DecorationImage(
-          image: const NetworkImage(
-            'https://i.pinimg.com/736x/d3/6b/cc/d36bcceceaa1d390489ec70d93154311.jpg',
-          ),
+          image: const AssetImage('assets/dark_bg.png'),
           fit: BoxFit.cover,
-          opacity: 0.05,
+          opacity: 0.8,
           onError: (_, __) {},
         ),
       ),
@@ -331,13 +471,18 @@ class _ChatPanelState extends State<ChatPanel> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            Text(
-              message.content,
-              style: const TextStyle(
-                color: AppTheme.textPrimary,
-                fontSize: 14,
+            // Show media if available
+            if (message.media != null)
+              _buildMediaContent(message.media!),
+            // Show text content if available and not empty
+            if (message.content.isNotEmpty)
+              Text(
+                message.content,
+                style: const TextStyle(
+                  color: AppTheme.textPrimary,
+                  fontSize: 14,
+                ),
               ),
-            ),
             const SizedBox(height: 2),
             Text(
               _formatMessageTime(message.createdAt),
@@ -349,6 +494,135 @@ class _ChatPanelState extends State<ChatPanel> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildMediaContent(MediaAttachment media) {
+    if (media.url == null || media.url!.isEmpty) {
+      return Container(
+        width: 200,
+        height: 200,
+        decoration: BoxDecoration(
+          color: AppTheme.secondaryBackground,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Center(
+          child: Text(
+            'Processing image...',
+            style: TextStyle(
+              color: AppTheme.textSecondary,
+              fontSize: 12,
+            ),
+          ),
+        ),
+      );
+    }
+    
+    if (media.mimeType.startsWith('image/')) {
+      return GestureDetector(
+        onTap: () {
+          // Show fullscreen image viewer
+          _showFullScreenImage(media.url!);
+        },
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Image.network(
+            media.url!,
+            width: 200,
+            height: 200,
+            fit: BoxFit.cover,
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return Container(
+                width: 200,
+                height: 200,
+                decoration: BoxDecoration(
+                  color: AppTheme.secondaryBackground,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Center(
+                  child: CircularProgressIndicator(
+                    value: loadingProgress.expectedTotalBytes != null
+                        ? loadingProgress.cumulativeBytesLoaded /
+                            loadingProgress.expectedTotalBytes!
+                        : null,
+                  ),
+                ),
+              );
+            },
+            errorBuilder: (context, error, stackTrace) {
+              return Container(
+                width: 200,
+                height: 200,
+                decoration: BoxDecoration(
+                  color: AppTheme.secondaryBackground,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Center(
+                  child: Icon(Icons.broken_image, color: AppTheme.textSecondary),
+                ),
+              );
+            },
+          ),
+        ),
+      );
+    } else {
+      // For other media types, show a file icon with details
+      return Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: AppTheme.secondaryBackground,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.insert_drive_file, color: AppTheme.accentColor),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    media.url?.split('/').last ?? 'Unknown',
+                    style: const TextStyle(
+                      color: AppTheme.textPrimary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    '${(media.sizeBytes / 1024).round()} KB',
+                    style: const TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  void _showFullScreenImage(String imageUrl) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: Colors.black,
+          child: Container(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.8,
+            ),
+            child: InteractiveViewer(
+              child: Image.network(imageUrl),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -370,7 +644,7 @@ class _ChatPanelState extends State<ChatPanel> {
           IconButton(
             icon: const Icon(Icons.attach_file),
             color: AppTheme.iconColor,
-            onPressed: () {},
+            onPressed: _pickImage,
           ),
           Expanded(
             child: TextField(
@@ -422,6 +696,34 @@ class _ChatPanelState extends State<ChatPanel> {
 
   void _showVoiceRecordingSnackbar() {
     SnackbarService.showInfo(StringConstants.voiceRecordingComingSoon);
+  }
+
+  Future<void> _pickImage() async {
+    try {
+      final chatData = Provider.of<ChatAppDataNotifier>(context, listen: false);
+      final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+      if (image != null) {
+        // Get file info
+        // final file = File(image.path);
+        final file = image;
+        final mimeType = lookupMimeType(image.path) ?? 'image/jpeg';
+        
+        // Generate a unique client ID for tracking
+        final clientId = DateTime.now().millisecondsSinceEpoch.toString();
+        
+        // Start upload process
+
+        await chatData.uploadMedia(
+          clientId: clientId,
+          roomId: chatData.roomsNotifier.value!.id,
+          fileName: image.name,
+          mimeType: mimeType,
+          file: file,
+        );
+      }
+    } catch (e,st) {
+      SnackbarService.showError('Failed to pick image: $e $st');
+    }
   }
 
   bool _isSameDay(DateTime date1, DateTime date2) {

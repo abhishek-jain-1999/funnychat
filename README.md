@@ -235,6 +235,9 @@ chmod +x deploy.sh
 # Deploy Backend updates
 ./deploy.sh backend
 
+# Deploy Backend media updates
+./deploy.sh backend-mdeia
+
 # Deploy Frontend updates
 ./deploy.sh frontend
 ```

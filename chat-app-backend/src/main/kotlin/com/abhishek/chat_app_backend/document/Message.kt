@@ -47,5 +47,9 @@ data class Attachment(
     val fileName: String,
     val fileUrl: String,
     val fileSize: Long,
-    val mimeType: String
+    val mimeType: String,
+    val objectKey: String? = null,
+    val mediaId: String? = null,
+    val width: Int? = null,
+    val height: Int? = null
 )

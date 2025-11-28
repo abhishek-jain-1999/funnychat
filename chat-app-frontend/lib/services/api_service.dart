@@ -218,5 +218,34 @@ class ApiService {
       return content.map((msg) => Message.fromJson(msg)).toList();
     });
   }
+  
+  // Send message via REST API (alternative to WebSocket)
+  // static Future<ChatMessageResponse> sendMessage({
+  //   required String roomId,
+  //   required String content,
+  //   String messageType = 'TEXT',
+  //   Map<String, dynamic>? media,
+  // }) async {
+  //   final token = await getToken();
+  //   if (token == null) throw ApiException('Not authenticated', statusCode: 401);
+  //
+  //   LogService.info('Sending message to room: $roomId');
+  //   final  Map<String, dynamic> body = {
+  //     'content': content,
+  //     'messageType': messageType,
+  //   };
+  //
+  //   if (media != null) {
+  //     body['media'] = media;
+  //   }
+  //
+  //   final response = await http.post(
+  //     Uri.parse('${ApiConstants.baseUrl}${ApiConstants.roomMessages(roomId)}'),
+  //     headers: _headers(),
+  //     body: jsonEncode(body),
+  //   );
+  //
+  //   return _handleResponse(response, (data) => ChatMessageResponse.fromJson(data));
+  // }
 }
 

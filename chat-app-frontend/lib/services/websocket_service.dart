@@ -155,19 +155,29 @@ class WebSocketService {
     required String roomId,
     required String content,
     String messageType = 'TEXT',
+    Map<String, dynamic>? media,
   }) {
     if (!_isConnected || _stompClient == null) {
       LogService.warn('WebSocket: Not connected, cannot send message');
       return;
     }
 
+    final Map<String, dynamic> body = {
+      'roomId': roomId,
+      'content': content,
+      'messageType': messageType,
+    };
+    
+    if (media != null) {
+      body['media'] = media;
+    }
+
     _stompClient!.send(
       destination: ApiConstants.sendMessageDest,
-      body: jsonEncode({
-        'roomId': roomId,
-        'content': content,
-        'messageType': messageType,
-      }),
+      body: jsonEncode(body),
+      headers: {
+        'receipt': 'message-${DateTime.now().millisecondsSinceEpoch}',
+      },
     );
   }
 
