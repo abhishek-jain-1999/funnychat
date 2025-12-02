@@ -59,8 +59,8 @@ class _ChatListPanelState extends State<ChatListPanel> {
   Widget _buildChatListView() {
     var chatData = Provider.of<ChatAppDataNotifier>(context);
     return Container(
-      color: AppColors.backgroundCard,
       decoration: const BoxDecoration(
+        color: AppColors.backgroundCard,
         border: Border(
           right: BorderSide(
             color: AppColors.backgroundBorder,
@@ -144,12 +144,6 @@ class _ChatListPanelState extends State<ChatListPanel> {
           icon: Icons.group_add_outlined,
           onPressed: _showNewGroupSnackbar,
           tooltip: StringConstants.newGroup,
-        ),
-        const SizedBox(width: 8),
-        _buildActionButton(
-          icon: Icons.chat_outlined,
-          onPressed: _showNewChatSnackbar,
-          tooltip: StringConstants.newChat,
         ),
       ],
     );

@@ -319,11 +319,11 @@ class _ChatPanelState extends State<ChatPanel> {
 
   Widget _buildHeader(ChatAppDataNotifier chatData) {
     return Container(
-      color: AppColors.backgroundCard.withOpacity(0.8), // Blurred effect simulated
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       height: AppConstants.headerHeight,
-      decoration: const BoxDecoration(
-        border: Border(
+      decoration: BoxDecoration(
+        color: AppColors.backgroundCard.withOpacity(0.8), // Blurred effect simulated
+        border: const Border(
           bottom: BorderSide(color: AppColors.backgroundBorder),
         ),
       ),
@@ -482,7 +482,7 @@ class _ChatPanelState extends State<ChatPanel> {
       alignment: alignment,
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(6),
         constraints: BoxConstraints(
           maxWidth: MediaQuery.of(context).size.width *
               AppConstants.maxMessageWidth,
@@ -490,15 +490,15 @@ class _ChatPanelState extends State<ChatPanel> {
         decoration: BoxDecoration(
           color: color,
           borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(16),
-            topRight: const Radius.circular(16),
+            topLeft: const Radius.circular(8),
+            topRight: const Radius.circular(8),
             bottomLeft: Radius.circular(isMe ? 16 : 0),
             bottomRight: Radius.circular(isMe ? 0 : 16),
           ),
           boxShadow: isMe 
             ? [BoxShadow(color: primaryColor.withOpacity(0.2), blurRadius: 8, offset: const Offset(0, 2))]
             : null,
-          border: !isMe ? Border.all(color: AppColors.backgroundBorder) : null,
+          border: isMe ? Border.all(color: AppColors.backgroundBorder, width: 2) : Border.all(color: primaryColor, width: 2),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.end,
@@ -669,14 +669,18 @@ class _ChatPanelState extends State<ChatPanel> {
   }
 
   String _formatMessageTime(DateTime time) {
-    return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+    final hour = time.hour;
+    final minute = time.minute;
+    final period = hour >= 12 ? 'PM' : 'AM';
+    final formattedHour = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
+    return '${formattedHour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')} $period';
   }
 
   Widget _buildInputArea() {
     return Container(
-      color: AppColors.backgroundCard,
       padding: const EdgeInsets.all(16),
       decoration: const BoxDecoration(
+        color: AppColors.backgroundCard,
         border: Border(
           top: BorderSide(color: AppColors.backgroundBorder),
         ),

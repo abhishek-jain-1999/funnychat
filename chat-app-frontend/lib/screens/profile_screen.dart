@@ -163,10 +163,10 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
 
   Widget _buildHeader() {
     return Container(
-      color: AppColors.backgroundCard,
       height: AppConstants.headerHeight,
       padding: const EdgeInsets.symmetric(horizontal: 8),
       decoration: const BoxDecoration(
+        color: AppColors.backgroundCard,
         border: Border(
           bottom: BorderSide(
             color: AppColors.backgroundBorder,
@@ -457,7 +457,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
   }
 
   void _showEditNameSnackbar() {
-    SnackbarService.showInfo(StringConstants.imagePickerComingSoon);
+    SnackbarService.showInfo(StringConstants.editNameComingSoon);
   }
 
   void _showEditAboutSnackbar() {
