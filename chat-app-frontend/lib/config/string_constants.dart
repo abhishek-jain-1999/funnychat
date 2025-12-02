@@ -1,6 +1,6 @@
 class StringConstants {
   // App Navigation & Common
-  static const String appTitle = 'WhatsApp Clone';
+  static const String appTitle = 'FlashChat';
   static const String loading = 'Loading...';
   static const String error = 'Error';
   static const String success = 'Success';
@@ -89,7 +89,7 @@ class StringConstants {
   
   // Profile
   static const String about = 'About';
-  static const String aboutDefault = 'Hey there! I am using WhatsApp.';
+  static const String aboutDefault = 'Hey there! I am using FlashChat.';
   static const String editNameComingSoon = 'Edit name coming soon';
   static const String editAboutComingSoon = 'Edit about coming soon';
   static const String emailCopiedToClipboard = 'Email copied to clipboard';

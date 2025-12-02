@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../config/theme.dart';
+import '../config/app_theme.dart';
 import '../notifiers/media_upload_notifier.dart';
 
 class MediaUploadProgress extends StatelessWidget {
@@ -15,6 +15,7 @@ class MediaUploadProgress extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final uploadState = mediaUploadNotifier.getUpload(clientId);
+    final primaryColor = Theme.of(context).colorScheme.primary;
 
     if (uploadState == null) {
       return const SizedBox.shrink();
@@ -22,10 +23,11 @@ class MediaUploadProgress extends StatelessWidget {
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppTheme.secondaryBackground,
-        borderRadius: BorderRadius.circular(8),
+        color: AppColors.backgroundSubtle,
+        borderRadius: BorderRadius.circular(AppRadius.standard),
+        border: Border.all(color: AppColors.backgroundBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -36,7 +38,7 @@ class MediaUploadProgress extends StatelessWidget {
                 child: Text(
                   uploadState.fileName,
                   style: const TextStyle(
-                    color: AppTheme.textPrimary,
+                    color: AppColors.textPrimary,
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
                   ),
@@ -46,40 +48,45 @@ class MediaUploadProgress extends StatelessWidget {
               if (uploadState.status == MediaUploadStatus.failed)
                 IconButton(
                   icon: const Icon(Icons.refresh, size: 16),
-                  color: AppTheme.accentColor,
+                  color: primaryColor,
                   onPressed: () {
                     mediaUploadNotifier.retryUpload(clientId);
                   },
                 ),
               IconButton(
                 icon: const Icon(Icons.close, size: 16),
-                color: AppTheme.textSecondary,
+                color: AppColors.textSecondary,
                 onPressed: () {
                   mediaUploadNotifier.cancelUpload(clientId);
                 },
               ),
             ],
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 8),
           if (uploadState.status == MediaUploadStatus.uploading)
             LinearProgressIndicator(
               value: uploadState.progress,
-              backgroundColor: AppTheme.textSecondary.withOpacity(0.3),
-              valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.accentColor),
+              backgroundColor: AppColors.textSecondary.withOpacity(0.1),
+              valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
+              borderRadius: BorderRadius.circular(AppRadius.pill),
             )
           else if (uploadState.status == MediaUploadStatus.pending)
-            const LinearProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(AppTheme.accentColor),
+            LinearProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
+              backgroundColor: AppColors.textSecondary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(AppRadius.pill),
             )
           else if (uploadState.status == MediaUploadStatus.confirming)
-            const LinearProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(AppTheme.accentColor),
+            LinearProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
+              backgroundColor: AppColors.textSecondary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(AppRadius.pill),
             )
           else if (uploadState.status == MediaUploadStatus.completed)
             const Text(
               'Upload completed',
               style: TextStyle(
-                color: AppTheme.textSecondary,
+                color: AppColors.textSecondary,
                 fontSize: 12,
               ),
             )
@@ -87,7 +94,7 @@ class MediaUploadProgress extends StatelessWidget {
             Text(
               uploadState.error ?? 'Upload failed',
               style: const TextStyle(
-                color: Colors.red,
+                color: Color(0xFFE74C3C),
                 fontSize: 12,
               ),
             ),
@@ -99,7 +106,7 @@ class MediaUploadProgress extends StatelessWidget {
             Text(
               '${(uploadState.progress * 100).round()}% • ${(uploadState.sizeBytes / 1024).round()} KB',
               style: const TextStyle(
-                color: AppTheme.textSecondary,
+                color: AppColors.textSecondary,
                 fontSize: 12,
               ),
             ),

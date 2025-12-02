@@ -8,7 +8,7 @@ import 'package:provider/provider.dart';
 
 import '../../config/constants.dart';
 import '../../config/string_constants.dart';
-import '../../config/theme.dart';
+import '../../config/app_theme.dart';
 import '../../models/message.dart';
 import '../../notifiers/media_upload_notifier.dart';
 import '../../services/snackbar_service.dart';
@@ -170,7 +170,7 @@ class _ChatPanelState extends State<ChatPanel> {
       top: 16,
       child: SafeArea(
         child: Material(
-          color: AppTheme.secondaryBackground.withOpacity(0.95),
+          color: AppColors.backgroundCard.withOpacity(0.95),
           elevation: 8,
           borderRadius: BorderRadius.circular(12),
           child: ConstrainedBox(
@@ -181,21 +181,21 @@ class _ChatPanelState extends State<ChatPanel> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Row(
+                  Row(
                     children: [
-                      Icon(Icons.cloud_upload, color: AppTheme.accentColor, size: 18),
-                      SizedBox(width: 8),
-                      Text(
+                      Icon(Icons.cloud_upload, color: Theme.of(context).colorScheme.primary, size: 18),
+                      const SizedBox(width: 8),
+                      const Text(
                         'Media uploads',
                         style: TextStyle(
-                          color: AppTheme.textPrimary,
+                          color: AppColors.textPrimary,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 8),
-                  const Divider(height: 1),
+                  const Divider(height: 1, color: AppColors.backgroundBorder),
                   const SizedBox(height: 8),
                   ConstrainedBox(
                     constraints: const BoxConstraints(maxHeight: 320),
@@ -219,7 +219,7 @@ class _ChatPanelState extends State<ChatPanel> {
   Widget build(BuildContext context) {
     final chatData = Provider.of<ChatAppDataNotifier>(context);
     final content = Container(
-      color: AppTheme.primaryBackground,
+      color: AppColors.backgroundBase,
       child: Column(
         children: [
           _buildHeader(chatData),
@@ -255,31 +255,46 @@ class _ChatPanelState extends State<ChatPanel> {
   }
 
   Widget _buildEmptyState() {
-    return const Center(
-      child: Text(
-        '${StringConstants.noMessagesYet}\n${StringConstants.sayHi}',
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          color: AppTheme.textSecondary,
-          fontSize: 16,
-        ),
+    final primaryColor = Theme.of(context).colorScheme.primary;
+    
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.comments_disabled_outlined,
+            size: 48,
+            color: primaryColor.withOpacity(0.5),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Welcome to FlashChat',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            StringConstants.sayHi,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 14,
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildMessagesListView(List<Message> messages) {
     return Container(
-      decoration: BoxDecoration(
-        image: DecorationImage(
-          image: const AssetImage('assets/dark_bg.png'),
-          fit: BoxFit.cover,
-          opacity: 0.8,
-          onError: (_, __) {},
-        ),
-      ),
+      color: AppColors.backgroundBase,
       child: ListView.builder(
         controller: _scrollController,
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.all(16),
         itemCount: messages.length,
         itemBuilder: (context, index) => _buildMessageRow(index, messages),
       ),
@@ -304,15 +319,20 @@ class _ChatPanelState extends State<ChatPanel> {
 
   Widget _buildHeader(ChatAppDataNotifier chatData) {
     return Container(
-      color: AppTheme.secondaryBackground,
+      color: AppColors.backgroundCard.withOpacity(0.8), // Blurred effect simulated
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       height: AppConstants.headerHeight,
+      decoration: const BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: AppColors.backgroundBorder),
+        ),
+      ),
       child: Row(
         children: [
           if (widget.onBack != null)
             IconButton(
-              icon: const Icon(Icons.arrow_back,),
-              color: AppTheme.iconColor,
+              icon: const Icon(Icons.arrow_back),
+              color: AppColors.textSecondary,
               onPressed: widget.onBack,
             ),
           _buildRoomAvatar(chatData),
@@ -325,6 +345,8 @@ class _ChatPanelState extends State<ChatPanel> {
   }
 
   Widget _buildRoomAvatar(ChatAppDataNotifier chatData) {
+    final primaryColor = Theme.of(context).colorScheme.primary;
+    
     return ValueListenableBuilder(
       valueListenable: chatData.roomsNotifier,
       builder: (__, room, _) {
@@ -333,13 +355,13 @@ class _ChatPanelState extends State<ChatPanel> {
           }
           return CircleAvatar(
           radius: 20,
-          backgroundColor: AppTheme.accentColor.withOpacity(0.3),
+          backgroundColor: AppColors.backgroundSubtle,
           child: room.type == 'GROUP'
-              ? const Icon(Icons.group, color: AppTheme.accentColor)
+              ? Icon(Icons.group, color: primaryColor)
               : Text(
                   room.name[0].toUpperCase(),
-                  style: const TextStyle(
-                    color: AppTheme.accentColor,
+                  style: TextStyle(
+                    color: primaryColor,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -362,7 +384,7 @@ class _ChatPanelState extends State<ChatPanel> {
             Text(
               room.name,
               style: const TextStyle(
-                color: AppTheme.textPrimary,
+                color: AppColors.textPrimary,
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
               ),
@@ -371,7 +393,7 @@ class _ChatPanelState extends State<ChatPanel> {
               Text(
                 '${room.participants.length} ${StringConstants.participants}',
                 style: const TextStyle(
-                  color: AppTheme.textSecondary,
+                  color: AppColors.textSecondary,
                   fontSize: 12,
                 ),
               ),
@@ -387,19 +409,19 @@ class _ChatPanelState extends State<ChatPanel> {
       children: [
         IconButton(
           icon: const Icon(Icons.videocam_outlined),
-          color: AppTheme.iconColor,
+          color: AppColors.textSecondary,
           onPressed: () {},
           tooltip: StringConstants.videoCall,
         ),
         IconButton(
           icon: const Icon(Icons.call_outlined),
-          color: AppTheme.iconColor,
+          color: AppColors.textSecondary,
           onPressed: () {},
           tooltip: StringConstants.voiceCall,
         ),
         IconButton(
           icon: const Icon(Icons.more_vert),
-          color: AppTheme.iconColor,
+          color: AppColors.textSecondary,
           onPressed: () {},
         ),
       ],
@@ -412,19 +434,21 @@ class _ChatPanelState extends State<ChatPanel> {
     final text = _formatDateHeader(date, difference);
 
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8),
+      margin: const EdgeInsets.symmetric(vertical: 16),
       child: Center(
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            color: AppTheme.secondaryBackground.withOpacity(0.8),
-            borderRadius: BorderRadius.circular(8),
+            color: AppColors.backgroundSubtle,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.backgroundBorder),
           ),
           child: Text(
             text,
             style: const TextStyle(
-              color: AppTheme.textSecondary,
+              color: AppColors.textSecondary,
               fontSize: 12,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ),
@@ -445,16 +469,20 @@ class _ChatPanelState extends State<ChatPanel> {
 
   Widget _buildMessageBubble(Message message) {
     final isMe = message.isUserSelf;
+    final primaryColor = Theme.of(context).colorScheme.primary;
     final alignment = isMe ? Alignment.centerRight : Alignment.centerLeft;
+    
     final color = isMe
-        ? AppTheme.outgoingMessageBubble
-        : AppTheme.incomingMessageBubble;
+        ? primaryColor
+        : AppColors.backgroundSubtle;
+        
+    final textColor = isMe ? AppColors.textInverse : AppColors.textPrimary;
 
     return Align(
       alignment: alignment,
       child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 2, horizontal: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+        padding: const EdgeInsets.all(12),
         constraints: BoxConstraints(
           maxWidth: MediaQuery.of(context).size.width *
               AppConstants.maxMessageWidth,
@@ -462,11 +490,15 @@ class _ChatPanelState extends State<ChatPanel> {
         decoration: BoxDecoration(
           color: color,
           borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(8),
-            topRight: const Radius.circular(8),
-            bottomLeft: Radius.circular(isMe ? 8 : 0),
-            bottomRight: Radius.circular(isMe ? 0 : 8),
+            topLeft: const Radius.circular(16),
+            topRight: const Radius.circular(16),
+            bottomLeft: Radius.circular(isMe ? 16 : 0),
+            bottomRight: Radius.circular(isMe ? 0 : 16),
           ),
+          boxShadow: isMe 
+            ? [BoxShadow(color: primaryColor.withOpacity(0.2), blurRadius: 8, offset: const Offset(0, 2))]
+            : null,
+          border: !isMe ? Border.all(color: AppColors.backgroundBorder) : null,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.end,
@@ -478,17 +510,17 @@ class _ChatPanelState extends State<ChatPanel> {
             if (message.content.isNotEmpty)
               Text(
                 message.content,
-                style: const TextStyle(
-                  color: AppTheme.textPrimary,
+                style: TextStyle(
+                  color: textColor,
                   fontSize: 14,
                 ),
               ),
-            const SizedBox(height: 2),
+            const SizedBox(height: 4),
             Text(
               _formatMessageTime(message.createdAt),
               style: TextStyle(
-                color: AppTheme.textSecondary.withOpacity(0.7),
-                fontSize: 11,
+                color: textColor.withOpacity(0.7),
+                fontSize: 10,
               ),
             ),
           ],
@@ -503,14 +535,14 @@ class _ChatPanelState extends State<ChatPanel> {
         width: 200,
         height: 200,
         decoration: BoxDecoration(
-          color: AppTheme.secondaryBackground,
+          color: AppColors.backgroundBase,
           borderRadius: BorderRadius.circular(8),
         ),
         child: const Center(
           child: Text(
             'Processing image...',
             style: TextStyle(
-              color: AppTheme.textSecondary,
+              color: AppColors.textSecondary,
               fontSize: 12,
             ),
           ),
@@ -537,7 +569,7 @@ class _ChatPanelState extends State<ChatPanel> {
                 width: 200,
                 height: 200,
                 decoration: BoxDecoration(
-                  color: AppTheme.secondaryBackground,
+                  color: AppColors.backgroundBase,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Center(
@@ -555,11 +587,11 @@ class _ChatPanelState extends State<ChatPanel> {
                 width: 200,
                 height: 200,
                 decoration: BoxDecoration(
-                  color: AppTheme.secondaryBackground,
+                  color: AppColors.backgroundBase,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Center(
-                  child: Icon(Icons.broken_image, color: AppTheme.textSecondary),
+                  child: Icon(Icons.broken_image, color: AppColors.textSecondary),
                 ),
               );
             },
@@ -571,13 +603,13 @@ class _ChatPanelState extends State<ChatPanel> {
       return Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: AppTheme.secondaryBackground,
+          color: AppColors.backgroundBase.withOpacity(0.2),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.insert_drive_file, color: AppTheme.accentColor),
+            const Icon(Icons.insert_drive_file, color: AppColors.textInverse),
             const SizedBox(width: 8),
             Expanded(
               child: Column(
@@ -586,15 +618,15 @@ class _ChatPanelState extends State<ChatPanel> {
                   Text(
                     media.url?.split('/').last ?? 'Unknown',
                     style: const TextStyle(
-                      color: AppTheme.textPrimary,
+                      color: AppColors.textInverse,
                       fontWeight: FontWeight.w500,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
                   Text(
                     '${(media.sizeBytes / 1024).round()} KB',
-                    style: const TextStyle(
-                      color: AppTheme.textSecondary,
+                    style: TextStyle(
+                      color: AppColors.textInverse.withOpacity(0.7),
                       fontSize: 12,
                     ),
                   ),
@@ -613,13 +645,23 @@ class _ChatPanelState extends State<ChatPanel> {
       builder: (context) {
         return Dialog(
           backgroundColor: Colors.black,
-          child: Container(
-            constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(context).size.height * 0.8,
-            ),
-            child: InteractiveViewer(
-              child: Image.network(imageUrl),
-            ),
+          insetPadding: EdgeInsets.zero,
+          child: Stack(
+            children: [
+              Center(
+                child: InteractiveViewer(
+                  child: Image.network(imageUrl),
+                ),
+              ),
+              Positioned(
+                top: 16,
+                right: 16,
+                child: IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ),
+            ],
           ),
         );
       },
@@ -632,41 +674,47 @@ class _ChatPanelState extends State<ChatPanel> {
 
   Widget _buildInputArea() {
     return Container(
-      color: AppTheme.secondaryBackground,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      color: AppColors.backgroundCard,
+      padding: const EdgeInsets.all(16),
+      decoration: const BoxDecoration(
+        border: Border(
+          top: BorderSide(color: AppColors.backgroundBorder),
+        ),
+      ),
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.emoji_emotions_outlined),
-            color: AppTheme.iconColor,
-            onPressed: () {},
-          ),
-          IconButton(
             icon: const Icon(Icons.attach_file),
-            color: AppTheme.iconColor,
+            color: AppColors.textSecondary,
             onPressed: _pickImage,
+            hoverColor: AppColors.backgroundSubtle,
           ),
           Expanded(
             child: TextField(
               controller: _messageController,
               maxLines: null,
-              style: const TextStyle(color: AppTheme.textPrimary),
+              style: const TextStyle(color: AppColors.textPrimary),
               decoration: InputDecoration(
                 hintText: StringConstants.typeMessage,
-                hintStyle: const TextStyle(color: AppTheme.textSecondary),
+                hintStyle: const TextStyle(color: AppColors.textPlaceholder),
                 filled: true,
-                fillColor: AppTheme.primaryBackground,
+                fillColor: AppColors.backgroundSubtle,
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(24),
+                  borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
                 ),
                 contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.emoji_emotions_outlined),
+                  color: AppColors.textSecondary,
+                  onPressed: () {},
+                ),
               ),
               onSubmitted: (_) => _handleSendMessage(),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 12),
           _buildSendButton(),
         ],
       ),
@@ -674,23 +722,32 @@ class _ChatPanelState extends State<ChatPanel> {
   }
 
   Widget _buildSendButton() {
-    return Container(
-      decoration: const BoxDecoration(
-        color: AppTheme.accentColor,
-        shape: BoxShape.circle,
-      ),
-      child: ValueListenableBuilder<bool>(
-        valueListenable: _hasText,
-        builder: (context, hasText, child) {
-          return IconButton(
+    final primaryColor = Theme.of(context).colorScheme.primary;
+    
+    return ValueListenableBuilder<bool>(
+      valueListenable: _hasText,
+      builder: (context, hasText, child) {
+        return Container(
+          decoration: BoxDecoration(
+            color: primaryColor,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: primaryColor.withOpacity(0.3),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: IconButton(
             icon: Icon(hasText ? Icons.send : Icons.mic),
-            color: Colors.white,
+            color: AppColors.textInverse,
             onPressed: hasText
                 ? _handleSendMessage
                 : _showVoiceRecordingSnackbar,
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -704,7 +761,6 @@ class _ChatPanelState extends State<ChatPanel> {
       final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
       if (image != null) {
         // Get file info
-        // final file = File(image.path);
         final file = image;
         final mimeType = lookupMimeType(image.path) ?? 'image/jpeg';
         
@@ -712,7 +768,6 @@ class _ChatPanelState extends State<ChatPanel> {
         final clientId = DateTime.now().millisecondsSinceEpoch.toString();
         
         // Start upload process
-
         await chatData.uploadMedia(
           clientId: clientId,
           roomId: chatData.roomsNotifier.value!.id,

@@ -2,7 +2,7 @@ import 'package:chat_app_frontend/config/constants.dart';
 import 'package:chat_app_frontend/notifiers/chat_app_data_notifier.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../config/theme.dart';
+import '../../config/app_theme.dart';
 import '../../config/string_constants.dart';
 import '../../models/room.dart';
 import '../../services/snackbar_service.dart';
@@ -29,14 +29,6 @@ class _ChatListPanelState extends State<ChatListPanel> {
     _searchController.dispose();
     super.dispose();
   }
-
-  // List<Room> get _filteredRooms {
-  //   // if (_searchQuery.isEmpty) return _displayRooms;
-  //   // return _displayRooms
-  //   //     .where((room) =>
-  //   //         room.name.toLowerCase().contains(_searchQuery.toLowerCase()))
-  //   //     .toList();
-  // }
 
   String _formatTime(DateTime? time) {
     if (time == null) return '';
@@ -67,7 +59,15 @@ class _ChatListPanelState extends State<ChatListPanel> {
   Widget _buildChatListView() {
     var chatData = Provider.of<ChatAppDataNotifier>(context);
     return Container(
-      color: AppTheme.primaryBackground,
+      color: AppColors.backgroundCard,
+      decoration: const BoxDecoration(
+        border: Border(
+          right: BorderSide(
+            color: AppColors.backgroundBorder,
+            width: 1,
+          ),
+        ),
+      ),
       child: Column(
         children: [
           _buildHeader(chatData),
@@ -80,7 +80,7 @@ class _ChatListPanelState extends State<ChatListPanel> {
 
   Widget _buildHeader(ChatAppDataNotifier chatData) {
     return Container(
-      color: AppTheme.secondaryBackground,
+      color: AppColors.backgroundCard,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       height: AppConstants.headerHeight,
       child: Row(
@@ -98,21 +98,40 @@ class _ChatListPanelState extends State<ChatListPanel> {
     if (currentUser == null) {
       return const SizedBox.shrink();
     }
+    final primaryColor = Theme.of(context).colorScheme.primary;
+    
     return GestureDetector(
       onTap: () => Provider.of<ChatAppDataNotifier>(context, listen: false).profileVisible.value = true,
-      child: CircleAvatar(
-        radius: 20,
-        backgroundColor: AppTheme.accentColor,
-        backgroundImage: currentUser.avatarUrl != null ? NetworkImage(currentUser.avatarUrl!) : null,
-        child: currentUser.avatarUrl == null
-            ? Text(
-                currentUser.firstName[0].toUpperCase(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              )
-            : null,
+      child: Stack(
+        children: [
+          CircleAvatar(
+            radius: 20,
+            backgroundColor: AppColors.backgroundSubtle,
+            backgroundImage: currentUser.avatarUrl != null ? NetworkImage(currentUser.avatarUrl!) : null,
+            child: currentUser.avatarUrl == null
+                ? Text(
+                    currentUser.firstName[0].toUpperCase(),
+                    style: TextStyle(
+                      color: primaryColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  )
+                : null,
+          ),
+          Positioned(
+            bottom: 0,
+            right: 0,
+            child: Container(
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(
+                color: AppColors.neonGreen,
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.backgroundCard, width: 1.5),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -121,44 +140,40 @@ class _ChatListPanelState extends State<ChatListPanel> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        IconButton(
-          icon: const Icon(Icons.group_add_outlined),
-          color: AppTheme.iconColor,
+        _buildActionButton(
+          icon: Icons.group_add_outlined,
           onPressed: _showNewGroupSnackbar,
           tooltip: StringConstants.newGroup,
         ),
-        IconButton(
-          icon: const Icon(Icons.chat_outlined),
-          color: AppTheme.iconColor,
+        const SizedBox(width: 8),
+        _buildActionButton(
+          icon: Icons.chat_outlined,
           onPressed: _showNewChatSnackbar,
           tooltip: StringConstants.newChat,
         ),
-        _buildMoreMenu(),
       ],
     );
   }
 
-  Widget _buildMoreMenu() {
-    return PopupMenuButton<String>(
-      icon: const Icon(Icons.more_vert, color: AppTheme.iconColor),
-      color: AppTheme.secondaryBackground,
-      onSelected: _handleMenuSelection,
-      itemBuilder: (context) => [
-        const PopupMenuItem(
-          value: 'logout',
-          child: Text(
-            StringConstants.logout,
-            style: TextStyle(color: AppTheme.textPrimary),
-          ),
-        ),
-      ],
+  Widget _buildActionButton({
+    required IconData icon,
+    required VoidCallback onPressed,
+    required String tooltip,
+  }) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.backgroundSubtle,
+        shape: BoxShape.circle,
+      ),
+      child: IconButton(
+        icon: Icon(icon, size: 20),
+        color: AppColors.textSecondary,
+        onPressed: onPressed,
+        tooltip: tooltip,
+        hoverColor: AppColors.textPrimary.withOpacity(0.1),
+        splashRadius: 24,
+      ),
     );
-  }
-
-  void _handleMenuSelection(String value) {
-    if (value == 'logout') {
-      widget.onLogout();
-    }
   }
 
   void _showNewGroupSnackbar() {
@@ -167,7 +182,6 @@ class _ChatListPanelState extends State<ChatListPanel> {
       builder: (context) => CreateGroupDialog(
         onGroupCreated: (room) {
           // Room created and navigated by dialog
-          // widget.onRoomSelected(room);
         },
       ),
     );
@@ -179,8 +193,8 @@ class _ChatListPanelState extends State<ChatListPanel> {
 
   Widget _buildSearchBar() {
     return Container(
-      color: AppTheme.primaryBackground,
-      padding: const EdgeInsets.all(8),
+      color: AppColors.backgroundCard,
+      padding: const EdgeInsets.all(16),
       child: TextField(
         controller: _searchController,
         onChanged: (value) {
@@ -188,17 +202,17 @@ class _ChatListPanelState extends State<ChatListPanel> {
         },
         decoration: InputDecoration(
           hintText: StringConstants.searchOrStartNewChat,
-          hintStyle: const TextStyle(color: AppTheme.textSecondary),
-          prefixIcon: const Icon(Icons.search, color: AppTheme.iconColor),
+          hintStyle: const TextStyle(color: AppColors.textPlaceholder),
+          prefixIcon: const Icon(Icons.search, color: AppColors.textSecondary),
           filled: true,
-          fillColor: AppTheme.secondaryBackground,
+          fillColor: AppColors.backgroundSubtle,
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide.none,
           ),
-          contentPadding: const EdgeInsets.symmetric(vertical: 8),
+          contentPadding: const EdgeInsets.symmetric(vertical: 12),
         ),
-        style: const TextStyle(color: AppTheme.textPrimary),
+        style: const TextStyle(color: AppColors.textPrimary),
       ),
     );
   }
@@ -236,7 +250,7 @@ class _ChatListPanelState extends State<ChatListPanel> {
       child: Text(
         _searchQuery.isEmpty ? StringConstants.noChats : StringConstants.noChatsFound,
         style: const TextStyle(
-          color: AppTheme.textSecondary,
+          color: AppColors.textSecondary,
           fontSize: 16,
         ),
       ),
@@ -244,12 +258,19 @@ class _ChatListPanelState extends State<ChatListPanel> {
   }
 
   Widget _buildChatItem(Room room, bool isSelected) {
+    final primaryColor = Theme.of(context).colorScheme.primary;
+    
     return InkWell(
       onTap: () => Provider.of<ChatAppDataNotifier>(context, listen: false).roomSelected(room),
+      hoverColor: AppColors.backgroundSubtle,
       child: Container(
-        decoration: BoxDecoration(color: isSelected ? AppTheme.secondaryBackground : Colors.transparent, borderRadius: BorderRadius.circular(16)),
-        margin: const EdgeInsets.symmetric(horizontal: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.backgroundSubtle : Colors.transparent,
+          border: isSelected 
+              ? Border(left: BorderSide(color: primaryColor, width: 4))
+              : null,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         child: Row(
           children: [
             _buildRoomAvatar(room),
@@ -262,94 +283,92 @@ class _ChatListPanelState extends State<ChatListPanel> {
   }
 
   Widget _buildRoomAvatar(Room room) {
+    final primaryColor = Theme.of(context).colorScheme.primary;
+    
     return CircleAvatar(
-      radius: 26,
-      backgroundColor: AppTheme.accentColor.withOpacity(0.3),
+      radius: 24,
+      backgroundColor: AppColors.backgroundSubtle,
       child: room.type == 'GROUP'
-          ? const Icon(Icons.group, color: AppTheme.accentColor)
+          ? Icon(Icons.group, color: primaryColor)
           : Text(
               room.name[0].toUpperCase(),
-              style: const TextStyle(
-                color: AppTheme.accentColor,
+              style: TextStyle(
+                color: primaryColor,
                 fontWeight: FontWeight.bold,
-                fontSize: 20,
+                fontSize: 18,
               ),
             ),
     );
   }
 
   Widget _buildRoomInfo(Room room) {
+    final primaryColor = Theme.of(context).colorScheme.primary;
+    
     return Expanded(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildRoomHeader(room),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  room.name,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                _formatTime(room.lastMessageTime),
+                style: TextStyle(
+                  color: room.unreadCount > 0 ? primaryColor : AppColors.textSecondary,
+                  fontSize: 12,
+                  fontWeight: room.unreadCount > 0 ? FontWeight.w600 : FontWeight.normal,
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 4),
-          _buildRoomPreview(room),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  room.lastMessage ?? 'No messages yet',
+                  style: TextStyle(
+                    color: room.unreadCount > 0 ? AppColors.textPrimary : AppColors.textSecondary,
+                    fontSize: 14,
+                    fontWeight: room.unreadCount > 0 ? FontWeight.w500 : FontWeight.normal,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+              ),
+              if (room.unreadCount > 0) ...[_buildUnreadBadge(room, primaryColor)],
+            ],
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildRoomHeader(Room room) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Expanded(
-          child: Text(
-            room.name,
-            style: const TextStyle(
-              color: AppTheme.textPrimary,
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-            ),
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Text(
-          _formatTime(room.lastMessageTime),
-          style: TextStyle(
-            color: room.unreadCount > 0 ? AppTheme.accentColor : AppTheme.textSecondary,
-            fontSize: 12,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildRoomPreview(Room room) {
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            room.lastMessage ?? 'No messages yet',
-            style: TextStyle(
-              color: room.unreadCount > 0 ? AppTheme.textPrimary : AppTheme.textSecondary,
-              fontSize: 14,
-            ),
-            overflow: TextOverflow.ellipsis,
-            maxLines: 1,
-          ),
-        ),
-        if (room.unreadCount > 0) ...[_buildUnreadBadge(room)],
-      ],
-    );
-  }
-
-  Widget _buildUnreadBadge(Room room) {
+  Widget _buildUnreadBadge(Room room, Color primaryColor) {
     return Padding(
       padding: const EdgeInsets.only(left: 8),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
         decoration: BoxDecoration(
-          color: AppTheme.accentColor,
-          borderRadius: BorderRadius.circular(10),
+          color: primaryColor,
+          borderRadius: BorderRadius.circular(AppRadius.pill),
         ),
         child: Text(
           room.unreadCount.toString(),
           style: const TextStyle(
-            color: Colors.white,
+            color: AppColors.textInverse,
             fontSize: 12,
             fontWeight: FontWeight.bold,
           ),

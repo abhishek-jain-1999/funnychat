@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'config/theme.dart';
+import 'package:provider/provider.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'config/app_theme.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/main_screen.dart';
 import 'services/api_service.dart';
@@ -14,12 +16,23 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Funny Chat',
-      scaffoldMessengerKey: scaffoldMessengerKey,
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.darkTheme,
-      home: const AuthWrapper(),
+    return ChangeNotifierProvider(
+      create: (_) => FlashChatTheme(),
+      child: Consumer<FlashChatTheme>(
+        builder: (context, themeProvider, _) {
+          return MaterialApp(
+            title: 'FlashChat',
+            scaffoldMessengerKey: scaffoldMessengerKey,
+            debugShowCheckedModeBanner: false,
+            theme: themeProvider.themeData.copyWith(
+              textTheme: GoogleFonts.interTextTheme(
+                themeProvider.themeData.textTheme,
+              ),
+            ),
+            home: const AuthWrapper(),
+          );
+        },
+      ),
     );
   }
 }
@@ -52,10 +65,11 @@ class _AuthWrapperState extends State<AuthWrapper> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(
+      return Scaffold(
+        backgroundColor: AppColors.backgroundBase,
         body: Center(
           child: CircularProgressIndicator(
-            color: AppTheme.accentColor,
+            color: Theme.of(context).colorScheme.primary,
           ),
         ),
       );

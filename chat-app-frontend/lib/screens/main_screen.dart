@@ -3,7 +3,7 @@ import 'package:chat_app_frontend/notifiers/multi_value_listenable_builder.dart'
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:async';
-import '../config/theme.dart';
+import '../config/app_theme.dart';
 import '../config/constants.dart';
 import '../config/string_constants.dart';
 import '../models/user.dart';
@@ -104,10 +104,11 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Widget _buildLoadingScreen() {
-    return const Scaffold(
+    return Scaffold(
+      backgroundColor: AppColors.backgroundBase,
       body: Center(
         child: CircularProgressIndicator(
-          color: AppTheme.accentColor,
+          color: Theme.of(context).colorScheme.primary,
         ),
       ),
     );
@@ -205,7 +206,7 @@ class _MainScreenState extends State<MainScreen> {
 
   Widget _buildEmptyState() {
     return Container(
-      color: AppTheme.primaryBackground,
+      color: AppColors.backgroundBase,
       child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -213,13 +214,13 @@ class _MainScreenState extends State<MainScreen> {
             Icon(
               Icons.chat_bubble_outline_rounded,
               size: 120,
-              color: AppTheme.textSecondary.withValues(alpha: 255.0 * 0.3),
+              color: AppColors.textSecondary.withOpacity(0.3),
             ),
             const SizedBox(height: 24),
             const Text(
               StringConstants.selectChatToStart,
               style: TextStyle(
-                color: AppTheme.textSecondary,
+                color: AppColors.textSecondary,
                 fontSize: 16,
               ),
             ),

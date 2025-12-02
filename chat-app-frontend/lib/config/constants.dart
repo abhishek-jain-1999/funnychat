@@ -1,6 +1,6 @@
 class AppConstants {
   // App Info
-  static const String appName = 'WhatsApp Clone';
+  static const String appName = 'FlashChat';
   static const String appVersion = '1.0.0';
   
   // Pagination
