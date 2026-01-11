@@ -3,7 +3,6 @@
 > **Version**: 2.0.0
 > **Status**: Production Ready
 > **Maintainer**: Abhishek Jain
-> **License**: MIT
 
 A robust, scalable, and modern real-time chat application built with **Spring Boot (Kotlin)** and **Flutter**, orchestrated with **Kubernetes**. This project demonstrates a microservices-ready architecture with a split-backend design for handling high-throughput messaging and heavy media processing separately.
 
