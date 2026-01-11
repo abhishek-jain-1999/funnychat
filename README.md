@@ -6,8 +6,6 @@
 
 A robust, scalable, and modern real-time chat application built with **Spring Boot (Kotlin)** and **Flutter**, orchestrated with **Kubernetes**. This project demonstrates a microservices-ready architecture with a split-backend design for handling high-throughput messaging and heavy media processing separately.
 
-This documentation is designed to be the **Single Source of Truth** for the entire project. It covers everything from high-level architecture to line-by-line configuration details.
-
 ---
 
 ## 📋 Table of Contents
@@ -1019,4 +1017,7 @@ Before deploying to production, ensure the following:
 
 ---
 
+> This project is 'Source Available' for educational purposes only. You are welcome to read the code to learn, but strict copyright is retained. No part of this code may be used, modified, or distributed for commercial or non-commercial purposes.
+
+---
 **End of Documentation**
